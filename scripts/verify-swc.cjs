@@ -1,24 +1,81 @@
 const { existsSync } = require('fs');
 const path = require('path');
 
-const pkg = require(path.join(__dirname, '..', 'node_modules', '@next', 'swc-win32-x64-msvc', 'package.json'));
+const root = path.join(__dirname, '..');
 
-console.log(`platform=${process.platform} arch=${process.arch}`);
-console.log(`next=${require(path.join(__dirname, '..', 'node_modules', 'next', 'package.json')).version}`);
-console.log(`@next/swc-win32-x64-msvc version=${pkg.version}`);
+function libcLabel() {
+  try {
+    const report = process.report.getReport();
+    const glibc = report && report.header && report.header.glibcVersionRuntime;
+    return glibc ? 'gnu' : 'musl';
+  } catch {
+    return 'gnu';
+  }
+}
 
-const binary = path.join(
-  __dirname,
-  '..',
-  'node_modules',
-  '@next',
-  'swc-win32-x64-msvc',
-  `next-swc.${process.platform}-${process.arch}-msvc.node`
-);
+function swcPackageName(platform, arch) {
+  switch (platform) {
+    case 'win32':
+      return `@next/swc-win32-${arch}-msvc`;
+    case 'darwin':
+      return `@next/swc-darwin-${arch}`;
+    case 'linux':
+      return `@next/swc-linux-${arch}-${libcLabel()}`;
+    default:
+      throw new Error(`Unsupported platform for Next.js SWC: ${platform}/${arch}`);
+  }
+}
 
+function swcBinaryName(platform, arch) {
+  switch (platform) {
+    case 'win32':
+      return `next-swc.win32-${arch}-msvc.node`;
+    case 'darwin':
+      return `next-swc.darwin-${arch}.node`;
+    case 'linux':
+      return `next-swc.linux-${arch}-${libcLabel()}.node`;
+    default:
+      throw new Error(`Unsupported platform for Next.js SWC: ${platform}/${arch}`);
+  }
+}
+
+const platform = process.platform;
+const arch = process.arch;
+
+console.log(`platform=${platform} arch=${arch}`);
+
+const nextPkgPath = path.join(root, 'node_modules', 'next', 'package.json');
+if (!existsSync(nextPkgPath)) {
+  console.error('ERROR: next is not installed. Run `npm install` first.');
+  process.exit(1);
+}
+const nextVersion = require(nextPkgPath).version;
+console.log(`next=${nextVersion}`);
+if (nextVersion !== '16.3.4') {
+  console.error(`WARNING: expected next 16.3.4, found ${nextVersion}.`);
+}
+
+const swcPkg = swcPackageName(platform, arch);
+const swcDir = path.join(root, 'node_modules', '@next', swcPkg.replace('@next/', ''));
+const installed = existsSync(path.join(swcDir, 'package.json'))
+  ? require(path.join(swcDir, 'package.json')).version
+  : null;
+
+console.log(`@next/swc package for ${platform}/${arch}: ${swcPkg}${installed ? ` (version ${installed})` : ' (NOT INSTALLED)'}`);
+
+if (nextVersion && installed && installed !== nextVersion) {
+  console.error(`ERROR: @next/swc version (${installed}) does not match next version (${nextVersion}). Re-run \`npm install\`.`);
+  process.exit(1);
+}
+
+const binary = path.join(swcDir, swcBinaryName(platform, arch));
 console.log(`binary=${binary}`);
 if (!existsSync(binary)) {
-  console.error('ERROR: SWC native binary not found. Run `npm install` on Windows x64.');
+  console.error(
+    'ERROR: SWC native binary not found. Install dependencies on Windows x64 with "npm install" ' +
+      'so npm installs ' + swcPkg + " automatically from next's optionalDependencies. " +
+      'Do NOT copy node_modules from Linux or force a platform SWC package.'
+  );
   process.exit(1);
 }
 
@@ -46,7 +103,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('OK: Native SWC binary (win32-x64-msvc) loads and transforms TypeScript successfully.');
+  console.log(`OK: Native SWC binary (${swcPkg}) loads and transforms TypeScript successfully.`);
   console.log(`    transform output: ${out.code.trim()}`);
   process.exit(0);
 }

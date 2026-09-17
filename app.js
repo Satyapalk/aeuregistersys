@@ -1,19 +1,23 @@
-const { createServer } = require('http');
-const { parse } = require('url');
-const next = require('next');
+const { spawn } = require("child_process");
 
-const dev = false;
+const port = process.env.PORT || 3000;
 
-const app = next({ dev });
-const handle = app.getRequestHandler();
+const command = process.platform === "win32" ? "cmd" : "npx";
+const args =
+  process.platform === "win32"
+    ? ["/c", "npx.cmd", "next", "start", "-p", String(port)]
+    : ["next", "start", "-p", String(port)];
 
-app.prepare().then(() => {
-    createServer((req, res) => {
-        const parsedUrl = parse(req.url, true);
-        handle(req, res, parsedUrl);
-    }).listen(process.env.PORT, (err) => {
-        if (err) throw err;
+const child = spawn(command, args, {
+  stdio: "inherit",
+  env: process.env
+});
 
-        console.log(`Next.js server started on port ${process.env.PORT}`);
-    });
+child.on("error", (error) => {
+  console.error("Failed to start Next.js:", error);
+  process.exit(1);
+});
+
+child.on("exit", (code) => {
+  process.exit(code ?? 0);
 });
