@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start -p 1689",
+    "postbuild": "node scripts/prepare-standalone.cjs",
+    "start": "node app.js",
     "lint": "eslint"
   },
   "dependencies": {

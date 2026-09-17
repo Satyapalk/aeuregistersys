@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Geist_Mono } from "next/font/google";
 import { Kantumruy_Pro } from "next/font/google";
 import "./globals.css";
+import FontAwesomeLoader from "@/components/FontAwesomeLoader";
 
 const kantumruy = Kantumruy_Pro({
   variable: "--font-kantumruy",
@@ -19,20 +21,18 @@ export const metadata: Metadata = {
   description: "សាកលវិទ្យាល័យអាស៊ីអឺរ៉ុប - Student Registration System",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="km"
       suppressHydrationWarning
       className={`${kantumruy.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-        />
-      </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head />
+      <body className="min-h-full flex flex-col">
+        <FontAwesomeLoader />
+        {children}
+      </body>
     </html>
   );
 }
